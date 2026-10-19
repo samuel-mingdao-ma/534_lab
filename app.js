@@ -3,12 +3,12 @@
 (() => {
   const API = "https://api.frankfurter.dev/v2/rates";
   const CURRENCIES = [
-    { code: "USD", name: "美元", symbol: "$" },
-    { code: "CNY", name: "人民币", symbol: "¥" },
-    { code: "EUR", name: "欧元", symbol: "€" },
-    { code: "GBP", name: "英镑", symbol: "£" },
-    { code: "JPY", name: "日元", symbol: "¥" },
-    { code: "CHF", name: "瑞士法郎", symbol: "Fr" },
+    { code: "USD", name: "US Dollar", symbol: "$" },
+    { code: "CNY", name: "Chinese Yuan", symbol: "¥" },
+    { code: "EUR", name: "Euro", symbol: "€" },
+    { code: "GBP", name: "British Pound", symbol: "£" },
+    { code: "JPY", name: "Japanese Yen", symbol: "¥" },
+    { code: "CHF", name: "Swiss Franc", symbol: "Fr" },
   ];
   const $ = (id) => document.getElementById(id);
   const state = { base: "USD", quote: "CNY", days: 30, latest: null, points: [], revision: 0, controller: null, activePoint: -1 };
@@ -30,7 +30,7 @@
   function init() {
     for (const id of ["base-currency", "from-currency", "to-currency", "chart-currency"]) {
       for (const currency of CURRENCIES) {
-        const option = new Option(id === "chart-currency" ? currency.code : `${currency.code} · ${currency.name}`, currency.code);
+        const option = new Option(id === "base-currency" ? `${currency.code} · ${currency.name}` : currency.code, currency.code);
         $(id).add(option);
       }
     }
@@ -97,10 +97,10 @@
     $("base-label").textContent = `1 ${state.base}`;
     $("chart-base").textContent = $("amount-currency").textContent = state.base;
     $("pair-unit").textContent = $("result-currency").textContent = state.quote;
-    $("change-label").textContent = `近 ${state.days} 天变化`;
+    $("change-label").textContent = `${state.days}-day change`;
     for (const [code, button] of rateButtons) {
       button.setAttribute("aria-pressed", String(code === state.quote));
-      button.setAttribute("aria-label", `查看 ${state.base} 对 ${code} 的汇率走势`);
+      button.setAttribute("aria-label", `View ${state.base} to ${code} rate history`);
     }
     document.querySelectorAll("[data-days]").forEach((button) => button.setAttribute("aria-pressed", String(Number(button.dataset.days) === state.days)));
   }
@@ -112,11 +112,11 @@
     const timeout = setTimeout(abort, 15000);
     try {
       const response = await fetch(`${API}?${new URLSearchParams(params)}`, { signal: controller.signal });
-      if (!response.ok) throw new Error(`数据源响应 ${response.status}`);
+      if (!response.ok) throw new Error(`Data source returned ${response.status}`);
       const data = await response.json();
-      if (!Array.isArray(data) || !data.length) throw new Error("数据源暂未返回汇率");
+      if (!Array.isArray(data) || !data.length) throw new Error("No exchange rates returned by the data source");
       const rows = data.filter((row) => row.base === params.base && CURRENCIES.some((currency) => currency.code === row.quote) && typeof row.rate === "number" && Number.isFinite(row.rate) && row.rate > 0 && validDate(row.date));
-      if (!rows.length) throw new Error("数据源返回的汇率无效");
+      if (!rows.length) throw new Error("Invalid exchange rate data");
       return rows;
     } finally {
       clearTimeout(timeout);
@@ -137,15 +137,15 @@
     hideTooltip();
     $("notice").hidden = true;
     $("refresh").disabled = true;
-    $("refresh").querySelector("span").textContent = "获取中…";
+    $("refresh").querySelector("span").textContent = "Loading…";
     $("rate-list").setAttribute("aria-busy", "true");
     $("footer-dot").classList.add("is-unavailable");
-    $("data-date").textContent = "正在获取汇率…";
+    $("data-date").textContent = "Loading exchange rates…";
     $("pair-rate").textContent = $("period-change").textContent = "—";
     for (const button of rateButtons.values()) button.querySelector(".rate-value").textContent = "—";
     for (const id of ["range-low", "range-high", "range-average", "chart-date-range"]) $(id).textContent = "—";
     $("chart").replaceChildren();
-    setChartMessage("正在获取历史汇率…", true);
+    setChartMessage("Loading rate history…", true);
     renderConversion();
     try {
       let latest = latestCache.get(base);
@@ -156,7 +156,7 @@
         rows.forEach((row) => {
           if (!rates.has(row.quote) || row.date > rates.get(row.quote).date) rates.set(row.quote, row);
         });
-        if (!rates.has(quote)) throw new Error("当前货币的汇率暂不可用");
+        if (!rates.has(quote)) throw new Error("Exchange rate unavailable for the selected currency");
         latest = { rates, fetchedAt: Date.now() };
         latestCache.set(base, latest);
       }
@@ -164,7 +164,7 @@
       state.latest = latest;
       renderLatest();
       const selected = latest.rates.get(quote);
-      if (!selected) throw new Error("当前货币的汇率暂不可用");
+      if (!selected) throw new Error("Exchange rate unavailable for the selected currency");
       const to = selected.date;
       const start = new Date(dateMillis(to));
       start.setUTCDate(start.getUTCDate() - days + 1);
@@ -178,7 +178,7 @@
           const byDate = new Map();
           rows.filter((row) => row.quote === quote && row.date >= from && row.date <= to).forEach((row) => byDate.set(row.date, row));
           points = [...byDate.values()].sort((a, b) => a.date.localeCompare(b.date));
-          if (points.length < 2) throw new Error("历史数据不足，暂时无法绘制走势");
+          if (points.length < 2) throw new Error("Not enough historical data to draw a chart");
           historyCache.set(key, points);
         }
         if (revision !== state.revision) return;
@@ -186,20 +186,20 @@
         renderChart();
       } catch (error) {
         if (revision !== state.revision || signal.aborted) return;
-        setChartMessage("历史走势暂时无法加载，当前汇率与换算仍可使用。", false, true);
+        setChartMessage("Rate history is unavailable. Current rates and conversion still work.", false, true);
       }
     } catch (error) {
       if (revision !== state.revision || signal.aborted) return;
-      $("notice").textContent = "暂时无法连接汇率数据源。请检查网络，或点击“刷新数据”重试。";
+      $("notice").textContent = "Unable to reach the data source. Check your connection or select Refresh data to try again.";
       $("notice").hidden = false;
-      $("data-date").textContent = "数据暂不可用";
+      $("data-date").textContent = "Data unavailable";
       $("rate-list").setAttribute("aria-busy", "false");
-      setChartMessage("暂未获取到汇率数据", false, true);
+      setChartMessage("Exchange rate data unavailable", false, true);
       renderConversion();
     } finally {
       if (revision === state.revision) {
         $("refresh").disabled = false;
-        $("refresh").querySelector("span").textContent = "刷新数据";
+        $("refresh").querySelector("span").textContent = "Refresh data";
       }
     }
   }
@@ -208,13 +208,13 @@
     for (const [code, button] of rateButtons) {
       const row = state.latest.rates.get(code);
       button.querySelector(".rate-value").textContent = row ? rateFormat(row.rate) : "—";
-      button.title = row ? `1 ${state.base} = ${rateFormat(row.rate)} ${code} · ${dateFormat(row.date)}` : "该币种数据暂不可用";
-      button.setAttribute("aria-label", row ? `1 ${state.base} 可兑换 ${rateFormat(row.rate)} ${code}，查看汇率走势` : `${code} 数据暂不可用`);
+      button.title = row ? `1 ${state.base} = ${rateFormat(row.rate)} ${code} · ${dateFormat(row.date)}` : "Data unavailable for this currency";
+      button.setAttribute("aria-label", row ? `1 ${state.base} equals ${rateFormat(row.rate)} ${code}. View rate history` : `${code} Data unavailable`);
     }
     $("rate-list").setAttribute("aria-busy", "false");
     const selected = state.latest.rates.get(state.quote);
     $("pair-rate").textContent = selected ? rateFormat(selected.rate) : "—";
-    $("data-date").textContent = selected ? `数据日期 ${dateFormat(selected.date)}` : "当前币种数据暂不可用";
+    $("data-date").textContent = selected ? `As of ${dateFormat(selected.date)}` : "Selected currency data unavailable";
     $("footer-dot").classList.toggle("is-unavailable", !selected);
     renderConversion();
   }
@@ -224,12 +224,12 @@
     const amount = input.valueAsNumber;
     const invalid = input.value !== "" && (!Number.isFinite(amount) || amount < 0 || amount > 1e12);
     $("amount-error").hidden = !invalid;
-    $("amount-error").textContent = invalid ? "请输入 0 至 1 万亿之间的金额。" : "";
+    $("amount-error").textContent = invalid ? "Enter an amount between 0 and 1 trillion." : "";
     input.setAttribute("aria-invalid", String(invalid));
     const row = state.latest?.rates.get(state.quote);
     const result = amount * (row?.rate ?? NaN);
     $("converted-amount").textContent = !invalid && Number.isFinite(result) && row ? amountFormat(result, state.quote) : "—";
-    $("conversion-rate").textContent = row ? `1 ${state.base} = ${rateFormat(row.rate)} ${state.quote}` : "等待参考汇率";
+    $("conversion-rate").textContent = row ? `1 ${state.base} = ${rateFormat(row.rate)} ${state.quote}` : "Waiting for reference rates";
   }
 
   function setChartMessage(message, loading, retry = false) {
@@ -247,7 +247,7 @@
     if (retry) {
       const button = document.createElement("button");
       button.type = "button";
-      button.textContent = "重新加载";
+      button.textContent = "Try again";
       box.append(button);
     }
     box.hidden = false;
@@ -290,7 +290,7 @@
       const point = points[Math.round((points.length - 1) * index / 4)];
       grid += `<text x="${x(point)}" y="${height - 10}" fill="#89928d" font-size="10" text-anchor="${index === 0 ? "start" : index === 4 ? "end" : "middle"}">${point.date.slice(5).replace("-", "/")}</text>`;
     }
-    chart.innerHTML = `<title id="chart-title">${state.base} 对 ${state.quote} 的 ${state.days} 天历史汇率</title><desc id="chart-description">${points[0].date} 至 ${points.at(-1).date}，最低 ${rateFormat(min)}，最高 ${rateFormat(max)}。使用左右方向键查看各日数据。</desc><defs><linearGradient id="area-fill" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#3b8060" stop-opacity=".15"/><stop offset="100%" stop-color="#3b8060" stop-opacity=".01"/></linearGradient></defs>${grid}<path d="${fill}" fill="url(#area-fill)"/><path class="chart-line" d="${line}" fill="none" stroke="#21644f" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" vector-effect="non-scaling-stroke"/><circle cx="${x(points.at(-1))}" cy="${y(points.at(-1))}" r="4" fill="#21644f" stroke="white" stroke-width="2"/><g id="chart-guide" visibility="hidden"><line id="guide-line" y1="${top}" y2="${bottom}" stroke="#7e9e8d" stroke-dasharray="3 4"/><circle id="guide-point" r="4" fill="#21644f" stroke="white" stroke-width="2"/></g>`;
+    chart.innerHTML = `<title id="chart-title">${state.base} to ${state.quote}: ${state.days}-day rate history</title><desc id="chart-description">${points[0].date} to ${points.at(-1).date}. Low ${rateFormat(min)}, high ${rateFormat(max)}. Use the left and right arrow keys to explore daily rates.</desc><defs><linearGradient id="area-fill" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#3b8060" stop-opacity=".15"/><stop offset="100%" stop-color="#3b8060" stop-opacity=".01"/></linearGradient></defs>${grid}<path d="${fill}" fill="url(#area-fill)"/><path class="chart-line" d="${line}" fill="none" stroke="#21644f" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" vector-effect="non-scaling-stroke"/><circle cx="${x(points.at(-1))}" cy="${y(points.at(-1))}" r="4" fill="#21644f" stroke="white" stroke-width="2"/><g id="chart-guide" visibility="hidden"><line id="guide-line" y1="${top}" y2="${bottom}" stroke="#7e9e8d" stroke-dasharray="3 4"/><circle id="guide-point" r="4" fill="#21644f" stroke="white" stroke-width="2"/></g>`;
     $("chart-message").hidden = true;
     $("chart-region").setAttribute("aria-busy", "false");
     $("chart-date-range").textContent = `${dateFormat(points[0].date)} — ${dateFormat(points.at(-1).date)}`;
@@ -299,7 +299,7 @@
     $("range-average").textContent = rateFormat(rates.reduce((sum, rate) => sum + rate, 0) / rates.length);
     const change = (points.at(-1).rate / points[0].rate - 1) * 100;
     $("period-change").textContent = `${change >= 0 ? "+" : ""}${change.toFixed(2)}%`;
-    $("period-change").title = `相对区间首日，1 ${state.base} 可兑换的 ${state.quote} 数量变化`;
+    $("period-change").title = `Change in the ${state.base} to ${state.quote} rate since the first day of the period`;
   }
 
   function onChartPointer(event) {
@@ -332,7 +332,7 @@
     const value = document.createElement("strong");
     value.textContent = `${rateFormat(point.rate)} ${state.quote}`;
     tooltip.append(value);
-    if (announce) $("chart-announcement").textContent = `${dateFormat(point.date)}，1 ${state.base} 可兑换 ${rateFormat(point.rate)} ${state.quote}`;
+    if (announce) $("chart-announcement").textContent = `${dateFormat(point.date)}: 1 ${state.base} equals ${rateFormat(point.rate)} ${state.quote}`;
     const matrix = $("chart").getScreenCTM();
     const position = new DOMPoint(x, y).matrixTransform(matrix);
     const rect = $("chart-interaction").getBoundingClientRect();

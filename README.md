@@ -1,44 +1,47 @@
-# 全球汇率仪表盘
+# Global Exchange Rate Dashboard
 
-一个中文静态网页，通过 `fetch` 获取 [Frankfurter API](https://frankfurter.dev/) 的真实汇率数据，无需 API key、后端服务或第三方依赖。
+A static, English-language dashboard that uses `fetch` to load real exchange rates from the [Frankfurter API](https://frankfurter.dev/). No API key, backend, or third-party dependencies required.
 
-## 功能
+[Open the dashboard](https://samuel-mingdao-ma.github.io/534_lab/)
 
-- 支持 USD、CNY、EUR、GBP、JPY、CHF，切换基准与目标币种。
-- 查看最新汇率，以及近 30 / 90 个日历日的 SVG 走势图。
-- 输入金额进行换算，交换币种或手动刷新数据。
-- 提供加载状态、请求失败提示与重试；不会用示例数据替代请求结果。
+## Features
 
-## 本地预览
+- Switch between USD, CNY, EUR, GBP, JPY, and CHF.
+- Explore daily reference rates and 30/90-calendar-day SVG history charts.
+- Convert amounts, swap currencies, and refresh data.
+- Loading indicators, validation, and retry controls. Failed requests never display fabricated rates.
+- Responsive layouts and keyboard-accessible chart values.
 
-直接双击 `index.html`，用浏览器打开即可。也可以在项目目录运行：
+## Local preview
+
+Open `index.html` directly in a browser, or run this command in the project directory:
 
 ```bash
 python3 -m http.server 8000
 ```
 
-然后访问 [http://localhost:8000](http://localhost:8000)。获取汇率需要联网。
+Visit [http://localhost:8000](http://localhost:8000). An internet connection is required to fetch rates.
 
-项目只有三个页面文件：`index.html`、`styles.css` 和 `app.js`，无需安装或构建。
+The application consists of `index.html`, `styles.css`, and `app.js`. No installation or build step is required.
 
-## 在 GitHub Pages 上发布
+## GitHub Pages
 
-将页面文件放到仓库 `main` 分支根目录后，在 GitHub 手动设置：
+This repository publishes from the root of `main`. To configure another copy:
 
-1. 打开仓库 **Settings → Pages**。
-2. 在 **Build and deployment** 中选择 **Deploy from a branch**。
-3. 选择 **main** 分支和 **/ (root)**，点击 **Save**。
-4. 等待 GitHub 完成发布，再打开 Pages 设置页显示的网站链接。
+1. Open **Settings → Pages** in the repository.
+2. Select **Deploy from a branch** under **Build and deployment**.
+3. Choose **main** and **/ (root)**, then select **Save**.
+4. Wait for deployment and open the URL shown in the Pages settings.
 
-## 数据与计算
+## Data and calculations
 
-最新汇率请求示例：
+Example latest-rates request:
 
 ```text
 https://api.frankfurter.dev/v2/rates?base=USD&quotes=CNY,EUR,GBP,JPY,CHF
 ```
 
-历史请求在同一接口添加 `from=YYYY-MM-DD&to=YYYY-MM-DD`，起止日期均包含。API 返回一个数组，单行数据形状如下：
+For history, add `from=YYYY-MM-DD&to=YYYY-MM-DD` to the same endpoint. Both dates are inclusive. The response is an array of records:
 
 ```json
 {
@@ -49,8 +52,8 @@ https://api.frankfurter.dev/v2/rates?base=USD&quotes=CNY,EUR,GBP,JPY,CHF
 }
 ```
 
-`rate` 表示 **1 单位 base 可兑换多少 quote**，金额换算使用 `金额 × 汇率`。同币种汇率为 1。
+`rate` is the number of quote-currency units per unit of the base currency. Conversion uses `amount × rate`; the rate for the same currency is 1.
 
-Frankfurter 默认汇总多个官方来源的参考汇率，按日更新，周末也可能有记录。页面的数据日期以 API 响应为准；最新记录不一定对应浏览当天。汇率不代表实时成交价，换算结果不包含银行手续费、点差或其他费用。
+Frankfurter combines reference rates from official sources. Rates update daily, and weekend records may be available. The dashboard displays the date returned by the API, which may differ from today's date. Rates are indicative rather than live execution prices. Conversions exclude bank spreads and fees.
 
-接口说明见 [Frankfurter 文档](https://frankfurter.dev/) 和 [v2 OpenAPI](https://api.frankfurter.dev/v2/openapi.json)。
+See the [Frankfurter documentation](https://frankfurter.dev/) and [v2 OpenAPI specification](https://api.frankfurter.dev/v2/openapi.json).
