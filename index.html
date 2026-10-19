@@ -7,8 +7,8 @@
   <meta name="description" content="Explore daily exchange rates, compare 30/90-day trends, and convert currencies. Powered by Frankfurter open data.">
   <title>Exchange Watch · Global Exchange Rates</title>
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 40 40'%3E%3Crect width='40' height='40' rx='12' fill='%231c6552'/%3E%3Cpath d='M10 15h20l-5-5m5 15H10l5 5' fill='none' stroke='white' stroke-width='3' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E">
-  <link rel="stylesheet" href="./styles.css">
-  <script src="./app.js?v=english-1" defer></script>
+  <link rel="stylesheet" href="./styles.css?v=time-machine-1">
+  <script src="./app.js?v=time-machine-1" defer></script>
 </head>
 <body>
   <div class="page-shell">
@@ -95,6 +95,24 @@
           <p class="converter-note"><span aria-hidden="true">ⓘ</span> Estimated using daily reference rates. Bank spreads and fees are not included.</p>
         </section>
       </div>
+
+      <section class="time-machine" aria-labelledby="time-title" aria-busy="true" id="time-machine">
+        <div class="time-controls">
+          <h2 id="time-title"><span aria-hidden="true">↶</span> Exchange time machine</h2>
+          <p id="time-amount">What if you exchanged this amount earlier?</p>
+          <label for="time-slider">Travel back to <strong id="time-date">—</strong></label>
+          <input id="time-slider" type="range" min="0" max="1" value="0" step="1" disabled aria-describedby="time-note">
+          <div class="time-endpoints"><span id="time-start">—</span><span id="time-end">—</span></div>
+        </div>
+        <div class="time-comparison">
+          <div class="time-values">
+            <div><span>Back then</span><strong id="time-then">—</strong><small id="time-then-rate">—</small></div>
+            <div><span>Latest available</span><strong id="time-now">—</strong><small id="time-latest-date">—</small></div>
+          </div>
+          <p id="time-difference" role="status" aria-live="polite">Loading your comparison…</p>
+          <span id="time-note">Uses the amount above and the selected 30/90-day history. No fees included.</span>
+        </div>
+      </section>
 
       <footer class="page-footer">
         <div><span class="status-dot" id="footer-dot" aria-hidden="true"></span><span id="data-date" role="status">Connecting to data source…</span><span class="footer-separator">/</span><span>Daily reference rates</span></div>

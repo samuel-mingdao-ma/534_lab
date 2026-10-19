@@ -11,7 +11,7 @@
     { code: "CHF", name: "Swiss Franc", symbol: "Fr" },
   ];
   const $ = (id) => document.getElementById(id);
-  const state = { base: "USD", quote: "CNY", days: 30, latest: null, points: [], revision: 0, controller: null, activePoint: -1 };
+  const state = { base: "USD", quote: "CNY", days: 30, latest: null, points: [], revision: 0, controller: null, activePoint: -1, timeIndex: 0 };
   const latestCache = new Map();
   const historyCache = new Map();
   const rateButtons = new Map();
@@ -50,6 +50,10 @@
     }
     $("swap-currencies").addEventListener("click", () => setPair(state.quote, state.base));
     $("amount").addEventListener("input", renderConversion);
+    $("time-slider").addEventListener("input", (event) => {
+      state.timeIndex = Number(event.target.value);
+      renderTimeMachine();
+    });
     $("converter-form").addEventListener("submit", (event) => event.preventDefault());
     document.querySelectorAll("[data-days]").forEach((button) => button.addEventListener("click", () => {
       if (state.days === Number(button.dataset.days)) return;
@@ -133,6 +137,8 @@
     syncControls();
     state.latest = null;
     state.points = [];
+    state.timeIndex = 0;
+    $("time-machine").setAttribute("aria-busy", "true");
     chartScale = null;
     hideTooltip();
     $("notice").hidden = true;
@@ -200,6 +206,8 @@
       if (revision === state.revision) {
         $("refresh").disabled = false;
         $("refresh").querySelector("span").textContent = "Refresh data";
+        $("time-machine").setAttribute("aria-busy", "false");
+        renderTimeMachine();
       }
     }
   }
@@ -230,6 +238,43 @@
     const result = amount * (row?.rate ?? NaN);
     $("converted-amount").textContent = !invalid && Number.isFinite(result) && row ? amountFormat(result, state.quote) : "—";
     $("conversion-rate").textContent = row ? `1 ${state.base} = ${rateFormat(row.rate)} ${state.quote}` : "Waiting for reference rates";
+    renderTimeMachine();
+  }
+
+  function renderTimeMachine() {
+    const slider = $("time-slider");
+    const points = state.points;
+    const latest = state.latest?.rates.get(state.quote);
+    const amount = $("amount").valueAsNumber;
+    const validAmount = Number.isFinite(amount) && amount >= 0 && amount <= 1e12;
+    $("time-amount").textContent = validAmount ? `What if you exchanged ${amountFormat(amount, state.base)} ${state.base} earlier?` : "Use the amount in the converter above.";
+    const available = points.length > 1 && latest;
+    slider.disabled = !available;
+    if (!available) {
+      for (const id of ["time-date", "time-start", "time-end", "time-then", "time-now", "time-then-rate", "time-latest-date"]) $(id).textContent = "—";
+      slider.removeAttribute("aria-valuetext");
+      $("time-difference").textContent = $("time-machine").getAttribute("aria-busy") === "true" ? "Loading your comparison…" : "History unavailable. Refresh data to try again.";
+      return;
+    }
+    state.timeIndex = Math.max(0, Math.min(points.length - 1, state.timeIndex));
+    const selected = points[state.timeIndex];
+    slider.max = points.length - 1;
+    slider.value = state.timeIndex;
+    slider.setAttribute("aria-valuetext", `${dateFormat(selected.date)}: 1 ${state.base} equals ${rateFormat(selected.rate)} ${state.quote}`);
+    $("time-date").textContent = dateFormat(selected.date);
+    $("time-start").textContent = dateFormat(points[0].date);
+    $("time-end").textContent = dateFormat(points.at(-1).date);
+    $("time-then-rate").textContent = `1 ${state.base} = ${rateFormat(selected.rate)} ${state.quote}`;
+    $("time-latest-date").textContent = `As of ${dateFormat(latest.date)}`;
+    $("time-then").textContent = validAmount ? `${amountFormat(amount * selected.rate, state.quote)} ${state.quote}` : "—";
+    $("time-now").textContent = validAmount ? `${amountFormat(amount * latest.rate, state.quote)} ${state.quote}` : "—";
+    if (!validAmount) {
+      $("time-difference").textContent = "Enter a valid amount in the converter above.";
+      return;
+    }
+    const difference = amount * (latest.rate - selected.rate);
+    const rounded = Number(Math.abs(difference).toFixed(state.quote === "JPY" ? 0 : 2));
+    $("time-difference").textContent = rounded === 0 ? "Same amount, different day. No difference at this precision." : `You would receive ${amountFormat(Math.abs(difference), state.quote)} ${state.quote} ${difference > 0 ? "more" : "less"} at the latest rate.`;
   }
 
   function setChartMessage(message, loading, retry = false) {
@@ -300,6 +345,7 @@
     const change = (points.at(-1).rate / points[0].rate - 1) * 100;
     $("period-change").textContent = `${change >= 0 ? "+" : ""}${change.toFixed(2)}%`;
     $("period-change").title = `Change in the ${state.base} to ${state.quote} rate since the first day of the period`;
+    renderTimeMachine();
   }
 
   function onChartPointer(event) {

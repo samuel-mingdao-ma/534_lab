@@ -9,6 +9,7 @@ A static, English-language dashboard that uses `fetch` to load real exchange rat
 - Switch between USD, CNY, EUR, GBP, JPY, and CHF.
 - Explore daily reference rates and 30/90-calendar-day SVG history charts.
 - Convert amounts, swap currencies, and refresh data.
+- Travel through the selected history with the **Exchange time machine** slider. Compare what the same amount would have exchanged for on a past date versus the latest available rate.
 - Loading indicators, validation, and retry controls. Failed requests never display fabricated rates.
 - Responsive layouts and keyboard-accessible chart values.
 
@@ -53,6 +54,8 @@ For history, add `from=YYYY-MM-DD&to=YYYY-MM-DD` to the same endpoint. Both date
 ```
 
 `rate` is the number of quote-currency units per unit of the base currency. Conversion uses `amount × rate`; the rate for the same currency is 1.
+
+The time machine uses the amount and currency pair from the converter. It compares `amount × historical rate` with `amount × latest rate`; the difference is expressed in the target currency. The slider includes only dates returned by the API in the selected 30/90-day window. This is a historical comparison, not an investment return or forecast. Displayed amounts follow the target currency's rounding precision.
 
 Frankfurter combines reference rates from official sources. Rates update daily, and weekend records may be available. The dashboard displays the date returned by the API, which may differ from today's date. Rates are indicative rather than live execution prices. Conversions exclude bank spreads and fees.
 
